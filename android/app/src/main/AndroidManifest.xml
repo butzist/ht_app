@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:label="ht_app"
+        android:label="Home"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

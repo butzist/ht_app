@@ -1,9 +1,9 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:ht_app/services/sensor.dart';
 import 'package:multicast_dns/multicast_dns.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
+
+import "services/weather.dart";
 
 final MDnsClient mDNS = MDnsClient();
 
@@ -38,33 +38,24 @@ class Main extends StatefulWidget {
 }
 
 class _MainState extends State<Main> {
-  double _temperature = double.nan;
-  double _humidity = double.nan;
-  double _dewpoint = double.nan;
-  RefreshController _refreshController =
+  SensorData _sensorData = const SensorData(
+      humidity: double.nan, temperature: double.nan, dewpoint: double.nan);
+  Forecast _forecast = const Forecast(timestamps: [], temperature: []);
+  double _minOutdoorTemp = double.nan;
+  final RefreshController _refreshController =
       RefreshController(initialRefresh: true);
 
   void _reloadData() async {
     try {
-      final server = await mDNS
-          .lookup<IPAddressResourceRecord>(
-              ResourceRecordQuery.addressIPv4("esp8266-ht.local"))
-          .first;
+      final sensorData = await querySensor(mDNS);
+      final forecast = await loadForecast();
+      final minOutdoorTemp = minTemp(forecast);
 
-      final response =
-          await http.get(Uri.parse("http://${server.address.address}/ht"));
-
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-
-        setState(() {
-          _temperature = json["temperature"];
-          _humidity = json["humidity"];
-          _dewpoint = json["dewpoint"];
-        });
-      } else {
-        throw Exception('Failed to load data');
-      }
+      setState(() {
+        _sensorData = sensorData;
+        _forecast = forecast;
+        _minOutdoorTemp = minOutdoorTemp;
+      });
 
       _refreshController.refreshCompleted();
     } catch (ex) {
@@ -93,9 +84,19 @@ class _MainState extends State<Main> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 Measurement(
-                    title: "Temperature", value: _temperature, unit: "°C"),
-                Measurement(title: "Humidity", value: _humidity, unit: "%"),
-                Measurement(title: "Dew point", value: _dewpoint, unit: "°C"),
+                    title: "Temperature",
+                    value: _sensorData.temperature,
+                    unit: "°C"),
+                Measurement(
+                    title: "Humidity", value: _sensorData.humidity, unit: "%"),
+                Measurement(
+                    title: "Dew point",
+                    value: _sensorData.dewpoint,
+                    unit: "°C"),
+                Measurement(
+                    title: "Min Temp.",
+                    value: _minOutdoorTemp,
+                    unit: "°C"),
               ],
             ),
           )),
@@ -105,18 +106,15 @@ class _MainState extends State<Main> {
 
 class Measurement extends StatelessWidget {
   const Measurement({
-    Key? key,
-    required String title,
-    required double value,
-    required String unit,
-  })  : _value = value,
-        _title = title,
-        _unit = unit,
-        super(key: key);
+    super.key,
+    required this.title,
+    required this.value,
+    required this.unit,
+  });
 
-  final String _title;
-  final double _value;
-  final String _unit;
+  final String title;
+  final double value;
+  final String unit;
 
   @override
   Widget build(BuildContext context) {
@@ -126,11 +124,11 @@ class Measurement extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Text(
-                _title,
+                title,
                 style: Theme.of(context).textTheme.headline3,
               ),
               Text(
-                '$_value $_unit',
+                '$value $unit',
                 style: Theme.of(context).textTheme.headline4,
               ),
             ]));

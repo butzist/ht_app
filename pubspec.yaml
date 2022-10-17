@@ -40,6 +40,7 @@ dependencies:
   http: ^0.13.5
   multicast_dns: ^0.3.2+2
   pull_to_refresh: ^2.0.0
+  quiver: ^3.1.0
 
 dev_dependencies:
   flutter_test:
