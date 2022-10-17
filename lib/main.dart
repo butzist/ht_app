@@ -1,6 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:multicast_dns/multicast_dns.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart';
+
+final MDnsClient mDNS = MDnsClient();
 
 void main() {
+  mDNS.start();
   runApp(const MyApp());
 }
 
@@ -11,105 +19,120 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Humidity/Temperature',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
+        primarySwatch: Colors.cyan,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const Main(title: 'Humidity and Temperature'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
+class Main extends StatefulWidget {
+  const Main({super.key, required this.title});
 
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<Main> createState() => _MainState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _MainState extends State<Main> {
+  double _temperature = double.nan;
+  double _humidity = double.nan;
+  double _dewpoint = double.nan;
+  RefreshController _refreshController =
+      RefreshController(initialRefresh: true);
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  void _reloadData() async {
+    try {
+      final server = await mDNS
+          .lookup<IPAddressResourceRecord>(
+              ResourceRecordQuery.addressIPv4("esp8266-ht.local"))
+          .first;
+
+      final response =
+          await http.get(Uri.parse("http://${server.address.address}/ht"));
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+
+        setState(() {
+          _temperature = json["temperature"];
+          _humidity = json["humidity"];
+          _dewpoint = json["dewpoint"];
+        });
+      } else {
+        throw Exception('Failed to load data');
+      }
+
+      _refreshController.refreshCompleted();
+    } catch (ex) {
+      _refreshController.refreshFailed();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Error fetching data: $ex"),
+        backgroundColor: Theme.of(context).errorColor,
+      ));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+      body: SmartRefresher(
+          enablePullDown: true,
+          enablePullUp: false,
+          header: const WaterDropMaterialHeader(),
+          controller: _refreshController,
+          onRefresh: _reloadData,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Measurement(
+                    title: "Temperature", value: _temperature, unit: "°C"),
+                Measurement(title: "Humidity", value: _humidity, unit: "%"),
+                Measurement(title: "Dew point", value: _dewpoint, unit: "°C"),
+              ],
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+          )),
     );
+  }
+}
+
+class Measurement extends StatelessWidget {
+  const Measurement({
+    Key? key,
+    required String title,
+    required double value,
+    required String unit,
+  })  : _value = value,
+        _title = title,
+        _unit = unit,
+        super(key: key);
+
+  final String _title;
+  final double _value;
+  final String _unit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+        margin: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 0),
+        child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Text(
+                _title,
+                style: Theme.of(context).textTheme.headline3,
+              ),
+              Text(
+                '$_value $_unit',
+                style: Theme.of(context).textTheme.headline4,
+              ),
+            ]));
   }
 }
