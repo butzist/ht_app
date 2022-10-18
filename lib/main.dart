@@ -48,14 +48,20 @@ class _MainState extends State<Main> {
   void _reloadData() async {
     try {
       final sensorData = await querySensor(mDNS);
-      final forecast = await loadForecast();
-      final minOutdoorTemp = minTemp(forecast);
 
       setState(() {
         _sensorData = sensorData;
-        _forecast = forecast;
-        _minOutdoorTemp = minOutdoorTemp;
       });
+
+      if (_minOutdoorTemp.isNaN) {
+        final forecast = await loadForecast();
+        final minOutdoorTemp = minTemp(forecast);
+
+        setState(() {
+          _forecast = forecast;
+          _minOutdoorTemp = minOutdoorTemp;
+        });
+      }
 
       _refreshController.refreshCompleted();
     } catch (ex) {
@@ -94,9 +100,7 @@ class _MainState extends State<Main> {
                     value: _sensorData.dewpoint,
                     unit: "°C"),
                 Measurement(
-                    title: "Min Temp.",
-                    value: _minOutdoorTemp,
-                    unit: "°C"),
+                    title: "Min Temp.", value: _minOutdoorTemp, unit: "°C"),
               ],
             ),
           )),
