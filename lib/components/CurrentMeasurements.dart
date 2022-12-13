@@ -18,11 +18,21 @@ class CurrentMeasurements extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: <Widget>[
-        Measurement(title: "Temperature", value: temperature, unit: "°C"),
-        Measurement(title: "Humidity", value: humidity, unit: "%"),
-        Measurement(title: "Dew point", value: dewpoint, unit: "°C"),
-        Measurement(title: "Min Temp.", value: minOutdoorTemp, unit: "°C"),
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Measurement(title: "Temperature", value: temperature, unit: "°C"),
+            Measurement(title: "Humidity", value: humidity, unit: "%"),
+          ],
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Measurement(title: "Dew point", value: dewpoint, unit: "°C"),
+            Measurement(title: "Min Temp.", value: minOutdoorTemp, unit: "°C"),
+          ],
+        )
       ],
     );
   }
@@ -43,17 +53,18 @@ class Measurement extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-        margin: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 0),
+        margin: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 10.0),
         child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Text(
                 title,
-                style: Theme.of(context).textTheme.headline3,
+                style: Theme.of(context).textTheme.headline4,
               ),
+              const SizedBox(height: 10),
               Text(
                 '${value.toStringAsFixed(2)} $unit',
-                style: Theme.of(context).textTheme.headline4,
+                style: Theme.of(context).textTheme.headline5,
               ),
             ]));
   }

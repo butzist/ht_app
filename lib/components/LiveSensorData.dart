@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:ht_app/components/CurrentMeasurements.dart';
 import 'package:ht_app/services/LocalSensorService.dart';
@@ -22,7 +23,8 @@ class LiveSensorData extends StatefulWidget {
 }
 
 class _LiveSensorDataState extends State<LiveSensorData> {
-  SensorData _sensorData = const SensorData();
+  SensorData _currentSensorData = const SensorData();
+  LineChartData _chartData = LineChartData();
   Forecast _forecast = const Forecast(timestamps: [], temperature: []);
   double _minOutdoorTemp = double.nan;
 
@@ -31,10 +33,46 @@ class _LiveSensorDataState extends State<LiveSensorData> {
 
   void _reloadData() async {
     try {
-      final sensorData = await widget.sensorService.query();
+      final sensorData = await widget.sensorService.queryCurrent();
 
       setState(() {
-        _sensorData = sensorData;
+        _currentSensorData = sensorData;
+      });
+
+      final historicalSensorData = await widget.sensorService.queryHistory();
+      final now = DateTime.now();
+      final chartData = LineChartData(
+          titlesData: FlTitlesData(
+            show: true,
+            leftTitles: AxisTitles(
+                sideTitles: SideTitles(reservedSize: 40, showTitles: true)),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(reservedSize: 40, showTitles: true),
+            ),
+            topTitles: AxisTitles(),
+            rightTitles: AxisTitles(),
+          ),
+          lineBarsData: [
+            LineChartBarData(
+              spots: historicalSensorData
+                  .map((entry) => FlSpot(
+                        entry.item1.difference(now).inSeconds / 3600,
+                        entry.item2.temperature,
+                      ))
+                  .toList(),
+            ),
+            LineChartBarData(
+              spots: historicalSensorData
+                  .map((entry) => FlSpot(
+                        entry.item1.difference(now).inSeconds / 3600,
+                        entry.item2.dewpoint,
+                      ))
+                  .toList(),
+            ),
+          ]);
+
+      setState(() {
+        _chartData = chartData;
       });
 
       if (_minOutdoorTemp.isNaN) {
@@ -69,44 +107,22 @@ class _LiveSensorDataState extends State<LiveSensorData> {
           header: const WaterDropMaterialHeader(),
           controller: _refreshController,
           onRefresh: _reloadData,
-          child: Center(
-            child: CurrentMeasurements(
-                temperature: _sensorData.temperature,
-                dewpoint: _sensorData.dewpoint,
-                humidity: _sensorData.humidity,
-                minOutdoorTemp: _minOutdoorTemp),
+          child: Column(
+            children: [
+              SizedBox(
+                height: 400,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(0, 80, 15, 0),
+                  child: LineChart(_chartData),
+                ),
+              ),
+              CurrentMeasurements(
+                  temperature: _currentSensorData.temperature,
+                  dewpoint: _currentSensorData.dewpoint,
+                  humidity: _currentSensorData.humidity,
+                  minOutdoorTemp: _minOutdoorTemp),
+            ],
           )),
     );
-  }
-}
-
-class Measurement extends StatelessWidget {
-  const Measurement({
-    super.key,
-    required this.title,
-    required this.value,
-    required this.unit,
-  });
-
-  final String title;
-  final double value;
-  final String unit;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-        margin: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 0),
-        child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Text(
-                title,
-                style: Theme.of(context).textTheme.headline3,
-              ),
-              Text(
-                '$value $unit',
-                style: Theme.of(context).textTheme.headline4,
-              ),
-            ]));
   }
 }

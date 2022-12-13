@@ -21,8 +21,6 @@ class NotificationService {
 
   static Future<void> showDailyNotification(
       FlutterLocalNotificationsPlugin flip) async {
-    await showDailyQuery(flip);
-
     // only run between 7:00 and 8:00
     if (systemTime().hour == 7) {
       await showDailyQuery(flip);
@@ -47,7 +45,7 @@ class NotificationService {
 
     try {
       var sensor = LocalSensorService();
-      var data = await sensor.query();
+      var data = await sensor.queryCurrent();
 
       await flip.show(
           0,
