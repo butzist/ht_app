@@ -22,8 +22,8 @@ class MyApp extends StatelessWidget {
   MyApp({super.key});
 
   final Map<String, SensorService> sensors = {
-    "Local Sensor": LocalSensorService(),
-    "Firebase": FirebaseSensorService(name: 'fake'),
+    "Living Room": FirebaseSensorService(name: 'livingroom'),
+    "Living Room (local)": LocalSensorService(),
   };
 
   final weatherService = WeatherService();

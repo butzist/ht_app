@@ -52,7 +52,7 @@ class Measurement extends StatelessWidget {
                 style: Theme.of(context).textTheme.headline3,
               ),
               Text(
-                '$value $unit',
+                '${value.toStringAsFixed(2)} $unit',
                 style: Theme.of(context).textTheme.headline4,
               ),
             ]));
