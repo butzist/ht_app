@@ -27,15 +27,11 @@ class WeatherService {
   }
 
   double minTemp(Forecast forecast) {
-    final unixTimeNow = DateTime
-        .now()
-        .millisecondsSinceEpoch / 1000;
-    final unixTimeTomorrow = DateTime
-        .now()
-        .add(aDay)
-        .millisecondsSinceEpoch / 1000;
-    return min(zip([forecast.timestamps, forecast.temperature]).where((
-        pair) => pair[0] >= unixTimeNow && pair[0] <= unixTimeTomorrow).map((
-        e) => e[1])) as double;
+    final unixTimeNow = DateTime.now().millisecondsSinceEpoch / 1000;
+    final unixTimeTomorrow =
+        DateTime.now().add(aDay).millisecondsSinceEpoch / 1000;
+    return min(zip([forecast.timestamps, forecast.temperature])
+        .where((pair) => pair[0] >= unixTimeNow && pair[0] <= unixTimeTomorrow)
+        .map((e) => e[1])) as double;
   }
 }

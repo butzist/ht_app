@@ -1,8 +1,3 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-import 'package:multicast_dns/multicast_dns.dart';
-
 class SensorData {
   const SensorData(
       {this.humidity = double.nan,
@@ -13,4 +8,3 @@ class SensorData {
   final double temperature;
   final double dewpoint;
 }
-

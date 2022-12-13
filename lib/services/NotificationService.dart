@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:ht_app/services/FirebaseAnnotationService.dart';
 import 'package:quiver/time.dart';
 import 'package:workmanager/workmanager.dart';
 
@@ -88,6 +88,7 @@ class NotificationService {
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   print("callback");
+
   WidgetsFlutterBinding.ensureInitialized();
   Workmanager().executeTask((task, inputData) async {
     await Firebase.initializeApp(
@@ -109,7 +110,7 @@ void callbackDispatcher() {
   });
 }
 
-onNotificationResponse(NotificationResponse notificationResponse) {
+onNotificationResponse(NotificationResponse notificationResponse) async {
   print("notification response");
 
   int fogLevel;
@@ -124,10 +125,12 @@ onNotificationResponse(NotificationResponse notificationResponse) {
       fogLevel = 2;
       break;
     default:
+      print("unexpected notification response");
       return;
   }
 
-  setFogLevel(fogLevel);
+  FirebaseAnnotationService annotations = FirebaseAnnotationService();
+  await annotations.setFogLevel(fogLevel);
 }
 
 @pragma('vm:entry-point')
@@ -141,14 +144,4 @@ onBackgroundNotificationResponse(
   );
 
   await onNotificationResponse(notificationResponse);
-}
-
-setFogLevel(int fogLevel) async {
-  var currentTime = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-  var db = FirebaseDatabase.instance.ref("annotations/$currentTime");
-  try {
-    await db.set({"fogLevel": fogLevel});
-  } catch (err) {
-    print(err);
-  }
 }
