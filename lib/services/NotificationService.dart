@@ -19,21 +19,81 @@ class NotificationService {
     );
   }
 
-  static Future<void> showDailyNotification(
-      FlutterLocalNotificationsPlugin flip) async {
-    // only run between 7:00 and 8:00
-    if (systemTime().hour == 7) {
-      await showDailyQuery(flip);
+  final FlutterLocalNotificationsPlugin _flip =
+      FlutterLocalNotificationsPlugin();
+
+  NotificationService._create();
+
+  static Future<NotificationService> create() async {
+    var service = NotificationService._create();
+    var android = const AndroidInitializationSettings('@mipmap/ic_launcher');
+    var settings = InitializationSettings(
+      android: android,
+    );
+
+    await service._flip.initialize(
+      settings,
+      onDidReceiveNotificationResponse: service._onNotificationResponse,
+      onDidReceiveBackgroundNotificationResponse:
+          onBackgroundNotificationResponse,
+    );
+
+    return service;
+  }
+
+  _onNotificationResponse(NotificationResponse notificationResponse) async {
+    print("notification response");
+
+    int fogLevel;
+    switch (notificationResponse.actionId) {
+      case "fog_0":
+        fogLevel = 0;
+        break;
+      case "fog_1":
+        fogLevel = 1;
+        break;
+      case "fog_2":
+        fogLevel = 2;
+        break;
+      default:
+        throw Exception("unexpected notification response");
     }
 
-    // only run between 20:00 and 21:00
-    if (systemTime().hour == 20) {
-      await showDailyReminder(flip);
+    FirebaseAnnotationService annotations = FirebaseAnnotationService();
+    await annotations.setFogLevel(fogLevel);
+  }
+
+  Future<void> showDailyNotification() async {
+    try {
+      // only run between 7:00 and 8:00
+      if (systemTime().hour == 7) {
+        await showDailyQuery();
+      }
+
+      // only run between 20:00 and 21:00
+      if (systemTime().hour == 20) {
+        await showDailyReminder();
+      }
+    } catch (err) {
+      await showError(err.toString());
     }
   }
 
-  static Future<void> showDailyReminder(
-      FlutterLocalNotificationsPlugin flip) async {
+  Future<void> showError(String message) async {
+    var platformChannelSpecifics = const NotificationDetails(
+      android: AndroidNotificationDetails('de.szalkowski.ht-app.error', 'Error',
+          channelDescription:
+              "Emits errors happening during background actions",
+          importance: Importance.max,
+          priority: Priority.high,
+          styleInformation: BigTextStyleInformation('')),
+    );
+
+    await _flip.show(0, "Error", message, platformChannelSpecifics,
+        payload: 'error');
+  }
+
+  Future<void> showDailyReminder() async {
     var platformChannelSpecifics = const NotificationDetails(
       android: AndroidNotificationDetails(
           'de.szalkowski.ht-app.daily', 'Daily status',
@@ -43,25 +103,18 @@ class NotificationService {
           styleInformation: BigTextStyleInformation('')),
     );
 
-    try {
-      var sensor = LocalSensorService();
-      var data = await sensor.queryCurrent();
+    var sensor = LocalSensorService();
+    var data = await sensor.queryCurrent();
 
-      await flip.show(
-          0,
-          "Current Temperature/Humidity",
-          "Temperature: ${data.temperature}\nDewpoint: ${data.dewpoint}\nHumidity: ${data.humidity}",
-          platformChannelSpecifics,
-          payload: 'status');
-    } catch (err) {
-      await flip.show(0, "Error", "Temperature fetching error: $err",
-          platformChannelSpecifics,
-          payload: 'error');
-    }
+    await _flip.show(
+        0,
+        "Current Temperature/Humidity",
+        "Temperature: ${data.temperature}\nDewpoint: ${data.dewpoint}\nHumidity: ${data.humidity}",
+        platformChannelSpecifics,
+        payload: 'status');
   }
 
-  static Future<void> showDailyQuery(
-      FlutterLocalNotificationsPlugin flip) async {
+  Future<void> showDailyQuery() async {
     var platformChannelSpecifics = const NotificationDetails(
       android: AndroidNotificationDetails(
         'de.szalkowski.ht-app.daily',
@@ -77,7 +130,7 @@ class NotificationService {
       ),
     );
 
-    await flip.show(0, "Are windows fogged?", "Select an option below",
+    await _flip.show(0, "Are windows fogged?", "Select an option below",
         platformChannelSpecifics,
         payload: 'query');
   }
@@ -93,42 +146,10 @@ void callbackDispatcher() {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    FlutterLocalNotificationsPlugin flip = FlutterLocalNotificationsPlugin();
-    var android = const AndroidInitializationSettings('@mipmap/ic_launcher');
-    var settings = InitializationSettings(
-      android: android,
-    );
-
-    await flip.initialize(
-      settings,
-      onDidReceiveNotificationResponse: onNotificationResponse,
-    );
-    await NotificationService.showDailyNotification(flip);
+    var flip = await NotificationService.create();
+    await flip.showDailyNotification();
     return true;
   });
-}
-
-onNotificationResponse(NotificationResponse notificationResponse) async {
-  print("notification response");
-
-  int fogLevel;
-  switch (notificationResponse.actionId) {
-    case "fog_0":
-      fogLevel = 0;
-      break;
-    case "fog_1":
-      fogLevel = 1;
-      break;
-    case "fog_2":
-      fogLevel = 2;
-      break;
-    default:
-      print("unexpected notification response");
-      return;
-  }
-
-  FirebaseAnnotationService annotations = FirebaseAnnotationService();
-  await annotations.setFogLevel(fogLevel);
 }
 
 @pragma('vm:entry-point')
@@ -136,10 +157,15 @@ onBackgroundNotificationResponse(
     NotificationResponse notificationResponse) async {
   print("background notification response");
 
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  var flip = await NotificationService.create();
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  await onNotificationResponse(notificationResponse);
+    await flip._onNotificationResponse(notificationResponse);
+  } catch (err) {
+    await flip.showError(err.toString());
+  }
 }
