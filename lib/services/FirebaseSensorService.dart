@@ -36,15 +36,24 @@ class FirebaseSensorService implements SensorService {
         .orderByKey()
         .limitToLast((60 ~/ 10) * 24);
 
+    snapshotToDouble(DataSnapshot snapshot) {
+      var value = snapshot.value;
+      if (value != null) {
+        return value as double;
+      }
+
+      return double.nan;
+    }
+
     var data = await query.get();
     if (data.exists) {
       var history = data.children
           .map((e) => Tuple2(
               DateTime.fromMillisecondsSinceEpoch(1000 * int.parse(e.key!)),
               SensorData(
-                temperature: e.child("t").value as double,
-                dewpoint: e.child("d").value as double,
-                humidity: e.child("h").value as double,
+                temperature: snapshotToDouble(e.child("t")),
+                dewpoint: snapshotToDouble(e.child("d")),
+                humidity: snapshotToDouble(e.child("h")),
               )))
           .toList();
 
