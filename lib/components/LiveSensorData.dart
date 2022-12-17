@@ -1,9 +1,10 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:ht_app/components/CurrentMeasurements.dart';
+import 'package:ht_app/components/TemperaturePlot.dart';
 import 'package:ht_app/services/LocalSensorService.dart';
 import 'package:ht_app/services/SensorData.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
+import 'package:tuple/tuple.dart';
 
 import '../services/WeatherService.dart';
 
@@ -24,8 +25,7 @@ class LiveSensorData extends StatefulWidget {
 
 class _LiveSensorDataState extends State<LiveSensorData> {
   SensorData _currentSensorData = const SensorData();
-  LineChartData _chartData = LineChartData();
-  Forecast _forecast = const Forecast(timestamps: [], temperature: []);
+  List<Tuple2<DateTime, SensorData>> _historicalSensorData = const [];
   double _minOutdoorTemp = double.nan;
 
   final RefreshController _refreshController =
@@ -34,45 +34,11 @@ class _LiveSensorDataState extends State<LiveSensorData> {
   void _reloadData() async {
     try {
       final sensorData = await widget.sensorService.queryCurrent();
+      final historicalSensorData = await widget.sensorService.queryHistory();
 
       setState(() {
         _currentSensorData = sensorData;
-      });
-
-      final historicalSensorData = await widget.sensorService.queryHistory();
-      final now = DateTime.now();
-      final chartData = LineChartData(
-          titlesData: FlTitlesData(
-            show: true,
-            leftTitles: AxisTitles(
-                sideTitles: SideTitles(reservedSize: 40, showTitles: true)),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(reservedSize: 40, showTitles: true),
-            ),
-            topTitles: AxisTitles(),
-            rightTitles: AxisTitles(),
-          ),
-          lineBarsData: [
-            LineChartBarData(
-              spots: historicalSensorData
-                  .map((entry) => FlSpot(
-                        entry.item1.difference(now).inSeconds / 3600,
-                        entry.item2.temperature,
-                      ))
-                  .toList(),
-            ),
-            LineChartBarData(
-              spots: historicalSensorData
-                  .map((entry) => FlSpot(
-                        entry.item1.difference(now).inSeconds / 3600,
-                        entry.item2.dewpoint,
-                      ))
-                  .toList(),
-            ),
-          ]);
-
-      setState(() {
-        _chartData = chartData;
+        _historicalSensorData = historicalSensorData;
       });
 
       if (_minOutdoorTemp.isNaN) {
@@ -80,7 +46,6 @@ class _LiveSensorDataState extends State<LiveSensorData> {
         final minOutdoorTemp = widget.weatherService.minTemp(forecast);
 
         setState(() {
-          _forecast = forecast;
           _minOutdoorTemp = minOutdoorTemp;
         });
       }
@@ -114,7 +79,8 @@ class _LiveSensorDataState extends State<LiveSensorData> {
                 height: 400,
                 child: Padding(
                   padding: const EdgeInsetsDirectional.fromSTEB(0, 60, 15, 0),
-                  child: LineChart(_chartData),
+                  child: TemperaturePlot(
+                      historicalSensorData: _historicalSensorData),
                 ),
               ),
               CurrentMeasurements(
