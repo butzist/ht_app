@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ht_app/components/CurrentMeasurements.dart';
 import 'package:ht_app/components/TemperaturePlot.dart';
 import 'package:ht_app/services/LocalSensorService.dart';
+import 'package:ht_app/services/NotificationService.dart';
 import 'package:ht_app/services/SensorData.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:tuple/tuple.dart';
@@ -60,11 +61,27 @@ class _LiveSensorDataState extends State<LiveSensorData> {
     }
   }
 
+  Future<void> showNotification() async {
+    var flip = await NotificationService.create();
+    await flip.showDailyQuery();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
+        actions: <Widget>[
+          Padding(
+              padding: const EdgeInsets.only(right: 20.0),
+              child: GestureDetector(
+                onTap: showNotification,
+                child: const Icon(
+                  Icons.add_comment,
+                  size: 26.0,
+                ),
+              )),
+        ],
       ),
       body: SmartRefresher(
           enablePullDown: true,
