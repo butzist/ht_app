@@ -104,15 +104,16 @@ class _LiveSensorDataState extends State<LiveSensorData> {
       body: SmartRefresher(
           enablePullDown: true,
           enablePullUp: false,
+          scrollDirection: Axis.vertical,
           header: const WaterDropMaterialHeader(),
           controller: _refreshController,
           onRefresh: _reloadData,
-          child: Column(
+          child: ListView(
             children: [
               SizedBox(
                 height: 400,
                 child: Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(0, 80, 15, 0),
+                  padding: const EdgeInsetsDirectional.fromSTEB(0, 60, 15, 0),
                   child: LineChart(_chartData),
                 ),
               ),

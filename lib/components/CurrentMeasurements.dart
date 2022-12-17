@@ -16,23 +16,16 @@ class CurrentMeasurements extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8.0,
+      runSpacing: 10.0,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Measurement(title: "Temperature", value: temperature, unit: "°C"),
-            Measurement(title: "Humidity", value: humidity, unit: "%"),
-          ],
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Measurement(title: "Dew point", value: dewpoint, unit: "°C"),
-            Measurement(title: "Min Temp.", value: minOutdoorTemp, unit: "°C"),
-          ],
-        )
+        Measurement(title: "Temperature", value: temperature, unit: "°C"),
+        Measurement(title: "Humidity", value: humidity, unit: "%"),
+        Measurement(title: "Dew point", value: dewpoint, unit: "°C"),
+        Measurement(title: "Min Temp.", value: minOutdoorTemp, unit: "°C"),
       ],
     );
   }
