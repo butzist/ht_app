@@ -11,7 +11,7 @@ class Forecast {
   final List<double> temperature;
 }
 
-class WeatherService {
+class WeatherForecastService {
   Future<Forecast> loadForecast() async {
     final response = await http.get(Uri.parse(
         "https://api.open-meteo.com/v1/forecast?latitude=47.44&longitude=8.47&hourly=temperature_2m&timeformat=unixtime"));

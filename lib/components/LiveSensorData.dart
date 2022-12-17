@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ht_app/components/CurrentMeasurements.dart';
 import 'package:ht_app/components/TemperaturePlot.dart';
+import 'package:ht_app/services/FirebaseWeatherService.dart';
 import 'package:ht_app/services/LocalSensorService.dart';
 import 'package:ht_app/services/NotificationService.dart';
 import 'package:ht_app/services/SensorData.dart';
@@ -10,15 +11,18 @@ import 'package:tuple/tuple.dart';
 import '../services/WeatherService.dart';
 
 class LiveSensorData extends StatefulWidget {
-  const LiveSensorData(
-      {super.key,
-      required this.title,
-      required this.sensorService,
-      required this.weatherService});
+  const LiveSensorData({
+    super.key,
+    required this.title,
+    required this.sensorService,
+    required this.historicalWeatherService,
+    required this.forecastService,
+  });
 
   final String title;
   final SensorService sensorService;
-  final WeatherService weatherService;
+  final HistoricalWeatherService historicalWeatherService;
+  final WeatherForecastService forecastService;
 
   @override
   State<LiveSensorData> createState() => _LiveSensorDataState();
@@ -27,6 +31,7 @@ class LiveSensorData extends StatefulWidget {
 class _LiveSensorDataState extends State<LiveSensorData> {
   SensorData _currentSensorData = const SensorData();
   List<Tuple2<DateTime, SensorData>> _historicalSensorData = const [];
+  List<Tuple2<DateTime, SensorData>> _historicalWeatherData = const [];
   double _minOutdoorTemp = double.nan;
 
   final RefreshController _refreshController =
@@ -36,15 +41,18 @@ class _LiveSensorDataState extends State<LiveSensorData> {
     try {
       final sensorData = await widget.sensorService.queryCurrent();
       final historicalSensorData = await widget.sensorService.queryHistory();
+      final historicalWeatherData =
+          await widget.historicalWeatherService.queryHistory();
 
       setState(() {
         _currentSensorData = sensorData;
         _historicalSensorData = historicalSensorData;
+        _historicalWeatherData = historicalWeatherData;
       });
 
       if (_minOutdoorTemp.isNaN) {
-        final forecast = await widget.weatherService.loadForecast();
-        final minOutdoorTemp = widget.weatherService.minTemp(forecast);
+        final forecast = await widget.forecastService.loadForecast();
+        final minOutdoorTemp = widget.forecastService.minTemp(forecast);
 
         setState(() {
           _minOutdoorTemp = minOutdoorTemp;
@@ -97,7 +105,8 @@ class _LiveSensorDataState extends State<LiveSensorData> {
                 child: Padding(
                   padding: const EdgeInsetsDirectional.fromSTEB(0, 60, 15, 0),
                   child: TemperaturePlot(
-                      historicalSensorData: _historicalSensorData),
+                      historicalSensorData: _historicalSensorData,
+                      historicalWeatherData: _historicalWeatherData),
                 ),
               ),
               CurrentMeasurements(

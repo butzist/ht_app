@@ -7,14 +7,22 @@ class TemperaturePlot extends StatelessWidget {
   const TemperaturePlot({
     super.key,
     required this.historicalSensorData,
+    required this.historicalWeatherData,
   });
 
   final List<Tuple2<DateTime, SensorData>> historicalSensorData;
+  final List<Tuple2<DateTime, SensorData>> historicalWeatherData;
 
   LineChartData get _chartData {
     final now = DateTime.now();
+    final dotData = FlDotData(
+      getDotPainter: (spot, dbl, data, index) =>
+          FlDotCrossPainter(color: Colors.black, size: 4, width: 1),
+    );
+    const barWidth = 3.0;
 
     return LineChartData(
+        backgroundColor: Colors.lightBlueAccent.withAlpha(30),
         titlesData: FlTitlesData(
           show: true,
           leftTitles: AxisTitles(
@@ -27,6 +35,9 @@ class TemperaturePlot extends StatelessWidget {
         ),
         lineBarsData: [
           LineChartBarData(
+            barWidth: barWidth,
+            color: const Color.fromRGBO(150, 0, 0, 1),
+            dotData: dotData,
             spots: historicalSensorData
                 .map((entry) => FlSpot(
                       entry.item1.difference(now).inSeconds / 3600,
@@ -35,10 +46,24 @@ class TemperaturePlot extends StatelessWidget {
                 .toList(),
           ),
           LineChartBarData(
+            barWidth: barWidth,
+            color: const Color.fromRGBO(0, 150, 0, 1),
+            dotData: dotData,
             spots: historicalSensorData
                 .map((entry) => FlSpot(
                       entry.item1.difference(now).inSeconds / 3600,
                       entry.item2.dewpoint,
+                    ))
+                .toList(),
+          ),
+          LineChartBarData(
+            barWidth: barWidth,
+            color: const Color.fromRGBO(50, 200, 250, 1),
+            dotData: dotData,
+            spots: historicalWeatherData
+                .map((entry) => FlSpot(
+                      entry.item1.difference(now).inSeconds / 3600,
+                      entry.item2.temperature,
                     ))
                 .toList(),
           ),

@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:ht_app/components/LiveSensorData.dart';
 import 'package:ht_app/services/FirebaseSensorService.dart';
+import 'package:ht_app/services/FirebaseWeatherService.dart';
 import 'package:ht_app/services/LocalSensorService.dart';
 import 'package:ht_app/services/NotificationService.dart';
 import 'package:ht_app/services/WeatherService.dart';
@@ -26,7 +27,8 @@ class MyApp extends StatelessWidget {
     "Living Room (local)": LocalSensorService(),
   };
 
-  final weatherService = WeatherService();
+  final forecastService = WeatherForecastService();
+  final historicalWeatherService = FirebaseWeatherService();
   final controller = PageController();
 
   // This widget is the root of your application.
@@ -44,7 +46,9 @@ class MyApp extends StatelessWidget {
             .map((e) => LiveSensorData(
                 title: e.key,
                 sensorService: e.value,
-                weatherService: weatherService))
+                forecastService: forecastService,
+          historicalWeatherService: historicalWeatherService,
+        ))
             .toList(),
       )),
     );
